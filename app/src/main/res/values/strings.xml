@@ -11,6 +11,8 @@
     <string name="toolbar_reconnect">Reconnect</string>
     <string name="toolbar_overflow">More options</string>
 
+    <string name="toast_connecting_to">Connecting to %s…</string>
+
     <!-- Overflow menu (only an item for the moment) -->
     <string name="menu_upgrade_layout">Upgrade gamepad</string>
 

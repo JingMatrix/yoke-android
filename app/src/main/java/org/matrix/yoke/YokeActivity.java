@@ -13,6 +13,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.text.InputType;
 import android.util.Log;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.Display;
 import android.view.MenuItem;
 import android.view.View;
@@ -22,6 +24,7 @@ import android.webkit.WebView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
@@ -71,6 +74,8 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
     private Map<String, NsdServiceInfo> mServiceMap = new HashMap<>();
     private List<String> mServiceNames = new ArrayList<>();
     private SharedPreferences sharedPref;
+    private ImageButton mReconnectButton;
+    private Animation mSpinningAnimation;
     private TextView mTextView;
     private Spinner mSpinner;
     private volatile boolean mSpinnerAutomatic = false;
@@ -348,6 +353,7 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
 
         @Override
         protected void onPostExecute(Long result) {
+            stopConnectingState();
             if (result == UPDATE_SUCCESS) {
                 mProgressBar.setVisibility(View.INVISIBLE);
                 try {
@@ -382,9 +388,32 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
 
         @Override
         protected void onCancelled() {
+            stopConnectingState();
             mProgressBar.setVisibility(View.INVISIBLE);
             mTextView.setText(res.getString(R.string.toolbar_connect_to));
         }
+    }
+
+    private void startConnectingState(String targetName) {
+        runOnUiThread(() -> {
+            // Disable the button to prevent multiple clicks
+            mReconnectButton.setEnabled(false);
+            // Start the spinning animation
+            mReconnectButton.startAnimation(mSpinningAnimation);
+            // Show a toast message to the user
+            Toast.makeText(YokeActivity.this,
+                String.format(res.getString(R.string.toast_connecting_to), targetName),
+                Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void stopConnectingState() {
+        runOnUiThread(() -> {
+            // Re-enable the button
+            mReconnectButton.setEnabled(true);
+            // Stop and clear the animation
+            mReconnectButton.clearAnimation();
+        });
     }
 
     @Override
@@ -392,6 +421,9 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
         super.onCreate(savedInstanceState);
         sharedPref = getPreferences(Context.MODE_PRIVATE);
         setContentView(R.layout.main_wv);
+
+        mReconnectButton = findViewById(R.id.reconnectButton);
+        mSpinningAnimation = AnimationUtils.loadAnimation(this, R.anim.spin_refresh);
 
         wv = findViewById(R.id.webView);
         wv.getSettings().setAllowFileAccess(true);
@@ -598,6 +630,7 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
     }
 
     public void connectToService(String tgt) {
+        startConnectingState(tgt);
         NsdServiceInfo service = mServiceMap.get(tgt);
         log(String.format(res.getString(R.string.log_service_resolving), service.getServiceType()));
         mNsdManager.resolveService(service, new NsdManager.ResolveListener() {
@@ -622,6 +655,7 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
     }
 
     public void connectToAddress(String tgt) {
+        startConnectingState(tgt);
         log(String.format(res.getString(R.string.log_directly_connecting), tgt));
         String[] addr = tgt.split(":");
         (new Thread(()-> openSocket(addr[0], Integer.parseInt(addr[1])))).start();
@@ -697,6 +731,7 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
             );
 
         } catch (SocketException | UnknownHostException e) {
+            stopConnectingState();
             mSocket = null; currentHost = null;
             YokeActivity.this.runOnUiThread(() -> {
                 mTextView.setText(res.getString(R.string.toolbar_connect_to));
@@ -775,6 +810,7 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
     // closeSocket() closes the connection as soon as possible. It disables the periodic
     // status transmissions, then closes the socket, then updates the UI to reflect this.
     private void closeSocket() {
+        stopConnectingState();
         log(res.getString(R.string.log_closing_connection));
         // Don't update the last status report:
         wv.loadUrl("about:blank");
