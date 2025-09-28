@@ -1,10 +1,13 @@
 apply plugin: 'com.android.application'
 android {
-    compileSdkVersion 29
+    namespace 'org.matrix.yoke'
+    compileSdkVersion 36
     defaultConfig {
-        applicationId 'com.simonramstedt.yoke'
         minSdkVersion 21
-        targetSdkVersion 29
+        targetSdkVersion 36
+    }
+    buildFeatures {
+        buildConfig = true
     }
     buildTypes {
         release {
@@ -13,20 +16,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    productFlavors {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     lintOptions {
         disable 'SetJavaScriptEnabled'
     }
 }
 
-dependencies {
-}
-
 repositories {
     google()
-    jcenter()
+    mavenCentral()
 }

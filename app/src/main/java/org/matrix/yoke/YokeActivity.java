@@ -1,4 +1,4 @@
-package com.simonramstedt.yoke;
+package org.matrix.yoke;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -394,6 +394,7 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
         setContentView(R.layout.main_wv);
 
         wv = findViewById(R.id.webView);
+        wv.getSettings().setAllowFileAccess(true);
         wv.getSettings().setJavaScriptEnabled(true);
         wv.addJavascriptInterface(new WebAppInterface(this), "Yoke");
 
@@ -633,9 +634,27 @@ public class YokeActivity extends Activity implements NsdManager.DiscoveryListen
         } else {
             requestDisconnect();
             closeSocket();
-            mSpinnerAutomatic = true;
+            mSpinnerAutomatic = true; // prevent onItemSelected from firing
             mSpinner.setSelection(mAdapter.getPosition(tgt));
-            connectToAddress(tgt);
+
+            if (mServiceMap.containsKey(tgt)) {
+                // If the target is a discovered service, resolve it again
+                log(String.format("Reconnecting to service: %s", tgt));
+                connectToService(tgt);
+            } else {
+                // Otherwise, assume it's a manually entered IP:port string
+                log(String.format("Reconnecting to address: %s", tgt));
+                // Add a check to prevent crashes even with manual entries
+                if (tgt.contains(":")) {
+                    connectToAddress(tgt);
+                } else {
+                    logError(String.format("Invalid address format for reconnect: %s", tgt), null);
+                    // Reset UI to disconnected state
+                    mTextView.setText(res.getString(R.string.toolbar_connect_to));
+                    mSpinner.setSelection(mAdapter.getPosition(NOTHING));
+                }
+            }
+
             mSpinnerAutomatic = false;
         }
     }
